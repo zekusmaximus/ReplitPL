@@ -1,0 +1,209 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 240 10% 3.9%; /* #0A0A0F */
+  --foreground: 0 0% 91%; /* #E8E8E8 */
+  --muted: 240 3.7% 15.9%;
+  --muted-foreground: 215 20.2% 65.1%; /* #64748B */
+  --popover: 240 10% 3.9%;
+  --popover-foreground: 0 0% 91%;
+  --card: 240 10% 3.9%;
+  --card-foreground: 0 0% 91%;
+  --border: 240 3.7% 15.9%;
+  --input: 240 3.7% 15.9%;
+  --primary: 160 84% 39%; /* #16C79A */
+  --primary-foreground: 0 0% 0%;
+  --secondary: 240 3.7% 15.9%;
+  --secondary-foreground: 0 0% 91%;
+  --accent: 240 3.7% 15.9%;
+  --accent-foreground: 0 0% 91%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 0 0% 91%;
+  --ring: 160 84% 39%;
+  --radius: 0.5rem;
+  
+  /* Custom Project Leibniz colors */
+  --space-black: 240 10% 3.9%; /* #0A0A0F */
+  --dark-navy: 240 44% 14%; /* #1A1A2E */
+  --cyan-accent: 160 84% 39%; /* #16C79A */
+  --amber-accent: 35 91% 51%; /* #F39C12 */
+  --soft-white: 0 0% 91%; /* #E8E8E8 */
+  --cool-gray: 215 20.2% 65.1%; /* #64748B */
+}
+
+.dark {
+  --background: 240 10% 3.9%;
+  --foreground: 0 0% 91%;
+  --muted: 240 3.7% 15.9%;
+  --muted-foreground: 215 20.2% 65.1%;
+  --popover: 240 10% 3.9%;
+  --popover-foreground: 0 0% 91%;
+  --card: 240 10% 3.9%;
+  --card-foreground: 0 0% 91%;
+  --border: 240 3.7% 15.9%;
+  --input: 240 3.7% 15.9%;
+  --primary: 160 84% 39%;
+  --primary-foreground: 0 0% 0%;
+  --secondary: 240 3.7% 15.9%;
+  --secondary-foreground: 0 0% 91%;
+  --accent: 240 3.7% 15.9%;
+  --accent-foreground: 0 0% 91%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 0 0% 91%;
+  --ring: 160 84% 39%;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: hsl(var(--space-black));
+    color: hsl(var(--soft-white));
+  }
+}
+
+@layer utilities {
+  .font-orbitron {
+    font-family: 'Orbitron', monospace;
+  }
+  
+  .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+  
+  .text-space {
+    color: hsl(var(--space-black));
+  }
+  
+  .text-navy {
+    color: hsl(var(--dark-navy));
+  }
+  
+  .text-cyan {
+    color: hsl(var(--cyan-accent));
+  }
+  
+  .text-amber {
+    color: hsl(var(--amber-accent));
+  }
+  
+  .text-soft-white {
+    color: hsl(var(--soft-white));
+  }
+  
+  .text-cool-gray {
+    color: hsl(var(--cool-gray));
+  }
+  
+  .bg-space {
+    background-color: hsl(var(--space-black));
+  }
+  
+  .bg-navy {
+    background-color: hsl(var(--dark-navy));
+  }
+  
+  .bg-cyan {
+    background-color: hsl(var(--cyan-accent));
+  }
+  
+  .bg-amber {
+    background-color: hsl(var(--amber-accent));
+  }
+  
+  .border-cyan {
+    border-color: hsl(var(--cyan-accent));
+  }
+  
+  .border-amber {
+    border-color: hsl(var(--amber-accent));
+  }
+  
+  .border-cool-gray {
+    border-color: hsl(var(--cool-gray));
+  }
+}
+
+/* Custom animations */
+@keyframes float {
+  0%, 100% { 
+    transform: translateY(0px); 
+    opacity: 0.3; 
+  }
+  50% { 
+    transform: translateY(-20px); 
+    opacity: 0.8; 
+  }
+}
+
+@keyframes dash {
+  to { 
+    stroke-dashoffset: -10; 
+  }
+}
+
+@keyframes fadeIn {
+  from { 
+    opacity: 0; 
+    transform: translateY(10px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+.particle {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: hsl(var(--cyan-accent));
+  border-radius: 50%;
+  animation: float 6s infinite ease-in-out;
+}
+
+.node-glow {
+  box-shadow: 0 0 20px hsl(var(--cyan-accent) / 0.3);
+  transition: all 0.3s ease;
+}
+
+.node-glow:hover {
+  box-shadow: 0 0 30px hsl(var(--cyan-accent) / 0.6);
+  transform: scale(1.05);
+}
+
+.connection-line {
+  stroke: hsl(var(--cyan-accent));
+  stroke-width: 2;
+  opacity: 0.6;
+  stroke-dasharray: 5,5;
+  animation: dash 2s linear infinite;
+}
+
+.story-fade {
+  animation: fadeIn 0.5s ease-in;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--dark-navy));
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--cyan-accent) / 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--cyan-accent) / 0.5);
+}
