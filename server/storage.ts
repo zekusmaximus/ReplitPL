@@ -42,6 +42,106 @@ export class MemStorage implements IStorage {
   }
 
   private initializeStoryNodes() {
+    const additionalNodes: InsertStoryNode[] = [
+      {
+        id: "evacuation",
+        title: "The Evacuation Protocol",
+        content: "Following protocol, Sarah triggered the alarm. Sirens blared, and emergency lights bathed the lab in a pulsing red glow. Within minutes, security teams were storming the facility, their faces grim. Dr. Chen was quickly escorted to a secure debriefing room, the fate of her discovery now out of her hands. The official report would later state that a 'minor equipment malfunction' had occurred, and the public would remain unaware of the dimensional breach. Sarah knew the truth, but her voice was silenced by layers of bureaucracy and national security.",
+        location: "Secure Debriefing Room - Sector C",
+        readTime: "3 min read",
+        x: 450,
+        y: 50,
+        isLocked: false,
+        connectedNodes: ["origin"], // Leads back or to a new "silenced" node
+        choices: [
+          {
+            id: "accept-fate",
+            text: "Accept the official story",
+            description: "Move on and try to forget what you saw.",
+            icon: "fas fa-door-closed",
+            nextNode: "origin" // Or a new "life-after" node
+          }
+        ]
+      },
+      {
+        id: "isolation",
+        title: "Dimensional Isolation",
+        content: "Sarah, prioritizing the safety of her own dimension, worked tirelessly to sever the connection. The entities on the other side seemed to understand, their final transmission a melancholic acceptance of their fate. The breach was sealed, the lab returned to normal, but Sarah was forever changed. The knowledge of what lay beyond, and the choice she made, weighed heavily on her. Was it an act of preservation, or a betrayal of a civilization that had reached out in desperation?",
+        location: "Quantum Research Laboratory - Control Room",
+        readTime: "4 min read",
+        x: 100,
+        y: 480,
+        isLocked: false,
+        connectedNodes: ["origin"], // Or a "haunted-by-choice" node
+        choices: [
+          {
+            id: "reflect",
+            text: "Reflect on the decision",
+            description: "Live with the consequences of her choice.",
+            icon: "fas fa-glasses",
+            nextNode: "origin" // Or a new "reflection-node"
+          }
+        ]
+      }
+    ];
+
+    const expansionNodes: InsertStoryNode[] = [
+      {
+        id: "conspiracy",
+        title: "The Government Conspiracy",
+        content: "Cooperating with the authorities, Sarah was drawn into a shadowy world of secrets and misinformation. She learned that governments had known about parallel dimensions for decades, using the knowledge for their own gain. Her discovery was not a breakthrough, but an unwelcome exposure of their activities. Sarah found herself a pawn in a much larger game, her scientific curiosity replaced by a growing sense of unease and complicity.",
+        location: "Black Site Research Facility",
+        readTime: "5 min read",
+        x: -50,
+        y: 350,
+        isLocked: false,
+        connectedNodes: ["deep-state", "escape"],
+        choices: [
+          {
+            id: "play-along",
+            text: "Play along with their agenda",
+            description: "Try to uncover more from the inside.",
+            icon: "fas fa-theater-masks",
+            nextNode: "deep-state"
+          },
+          {
+            id: "attempt-escape",
+            text: "Attempt to escape and expose them",
+            description: "Risk everything to reveal the truth.",
+            icon: "fas fa-running",
+            nextNode: "escape"
+          }
+        ]
+      },
+      {
+        id: "resistance",
+        title: "The Resistance Movement",
+        content: "Choosing to resist, Sarah became a fugitive. She connected with an underground network of scientists, activists, and whistleblowers who were aware of the government's dimensional activities and were fighting to expose them. Her knowledge of the Genesis Protocol became a valuable asset to the resistance. Life on the run was dangerous, but Sarah felt a renewed sense of purpose, fighting for transparency and the ethical use of science.",
+        location: "Hidden Resistance Hideout",
+        readTime: "5 min read",
+        x: 250,
+        y: 350,
+        isLocked: false,
+        connectedNodes: ["underground-network", "final-stand"],
+        choices: [
+          {
+            id: "lead-mission",
+            text: "Lead a critical mission",
+            description: "Use your knowledge to strike a blow against the conspiracy.",
+            icon: "fas fa-bullseye",
+            nextNode: "underground-network"
+          },
+          {
+            id: "seek-asylum",
+            text: "Seek asylum in a neutral country",
+            description: "Try to expose the truth from a safe haven.",
+            icon: "fas fa-flag",
+            nextNode: "final-stand"
+          }
+        ]
+      }
+    ];
+
     const nodes: InsertStoryNode[] = [
       {
         id: "origin",
@@ -238,7 +338,7 @@ But the most shocking discovery was yet to come. In this parallel dimension, she
           }
         ]
       }
-    ];
+    ].concat(additionalNodes, expansionNodes);
 
     nodes.forEach(node => {
       this.storyNodes.set(node.id, node as StoryNode);
