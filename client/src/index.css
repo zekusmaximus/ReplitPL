@@ -131,6 +131,58 @@
 }
 
 /* Custom animations */
+@keyframes energy-flow-anim {
+  from {
+    stroke-dashoffset: 24;
+    opacity: 1;
+  }
+  to {
+    stroke-dashoffset: -48;
+    opacity: 0;
+  }
+}
+
+.energy-flow-line {
+  stroke: hsl(var(--amber-accent));
+  stroke-width: 3.5;
+  stroke-dasharray: 8, 16;
+  animation-name: energy-flow-anim;
+  animation-duration: 1.5s;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+@keyframes tooltip-fade-in-anim {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -100%); /* Start slightly higher */
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -110%);
+  }
+}
+
+.tooltip-fade-in {
+  animation: tooltip-fade-in-anim 0.2s ease-out forwards;
+  z-index: 50; /* Ensure it's above other elements */
+}
+
+@keyframes pulse-strong {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 0.7;
+  }
+}
+
+.animate-pulse-strong {
+  animation: pulse-strong 2s infinite ease-in-out;
+}
+
 @keyframes float {
   0%, 100% { 
     transform: translateY(0px); 
@@ -144,7 +196,7 @@
 
 @keyframes dash {
   to { 
-    stroke-dashoffset: -10; 
+    stroke-dashoffset: -24;
   }
 }
 
@@ -180,10 +232,10 @@
 
 .connection-line {
   stroke: hsl(var(--cyan-accent));
-  stroke-width: 2;
-  opacity: 0.6;
-  stroke-dasharray: 5,5;
-  animation: dash 2s linear infinite;
+  stroke-width: 2.5; /* Increased slightly */
+  opacity: 0.7; /* Increased slightly */
+  stroke-dasharray: 8,4; /* Longer dashes, shorter gaps */
+  animation: dash 1.5s linear infinite; /* Slightly faster animation */
 }
 
 .story-fade {
@@ -206,4 +258,11 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--cyan-accent) / 0.5);
+}
+
+.memory-trail-line {
+  stroke: hsl(var(--amber-accent)); /* Or a different color for trails */
+  stroke-width: 1.5;
+  stroke-dasharray: 3,3; /* Different dash pattern */
+  transition: stroke-opacity 0.5s ease-out; /* For smooth fading if opacity is also controlled by CSS */
 }
