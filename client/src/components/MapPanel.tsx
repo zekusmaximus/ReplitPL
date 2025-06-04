@@ -82,12 +82,12 @@ export default function MapPanel({ nodes, visitedNodes, currentNodeId, onNodeCli
       // OrbitControls
       if (cameraRef.current && rendererRef.current.domElement) {
         const controls = new OrbitControls(cameraRef.current, rendererRef.current.domElement);
-        controls.autoRotate = true;
-        controls.autoRotateSpeed = 0.3;
-        controls.enableDamping = true;
-        controls.dampingFactor = 0.05;
+        controls.autoRotate = false; // Changed
+        // controls.autoRotateSpeed = 0.3; // Commented out as autoRotate is false
+        controls.enableDamping = true; // Verified
+        controls.dampingFactor = 0.1; // Changed
         controls.enableZoom = true;
-        controls.enablePan = true; // Allow panning for now
+        controls.enablePan = false; // Changed
         controls.minDistance = 5;
         controls.maxDistance = 20;
         controls.target.set(0, 0, 0); // Assuming nodes are centered around the origin
@@ -236,11 +236,11 @@ export default function MapPanel({ nodes, visitedNodes, currentNodeId, onNodeCli
 
     // Create and position new 3D nodes
     nodes.forEach(node => {
-      const worldX = (node.x / 600 - 0.5) * 10;
-      const worldY = (node.y / 500 - 0.5) * -8; // Invert Y
+      const worldX = (node.x / 600 - 0.5) * 12; // Adjusted spread
+      const worldY = (node.y / 500 - 0.5) * -10; // Adjusted spread & Invert Y
       const worldZ = (Math.random() - 0.5) * 0.5; // Small random Z for depth variation
 
-      const geometry = new THREE.IcosahedronGeometry(0.25, 0);
+      const geometry = new THREE.IcosahedronGeometry(0.4, 1); // Adjusted size and detail
       const material = new THREE.MeshStandardMaterial({
         color: 0xffffff, // Default white
         roughness: 0.4, // Adjusted roughness
@@ -386,6 +386,166 @@ export default function MapPanel({ nodes, visitedNodes, currentNodeId, onNodeCli
   //   }, 1000); // Check every second
   //   return () => clearInterval(timer);
   // }, []);
+
+  useEffect(() => {
+    if (
+      !rendererRef.current ||
+      !cameraRef.current ||
+      !sceneRef.current ||
+      !mountRef.current ||
+      !nodesGroupRef.current
+    ) {
+      return;
+    }
+
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    const currentMount = mountRef.current; // Capture for use in handleClick
+
+    const handleClick = (event: MouseEvent) => {
+      if (!rendererRef.current || !cameraRef.current || !sceneRef.current || !nodesGroupRef.current || !currentMount) return;
+
+      const rect = currentMount.getBoundingClientRect();
+      mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+      raycaster.setFromCamera(mouse, cameraRef.current);
+
+      const nodeMeshes = nodesGroupRef.current.children.filter(
+        (child): child is THREE.Mesh =>
+          child instanceof THREE.Mesh &&
+          child.userData.nodeId &&
+          !child.userData.isFractalChild
+      );
+
+      const intersects = raycaster.intersectObjects(nodeMeshes);
+
+      if (intersects.length > 0) {
+        const clickedMesh = intersects[0].object as THREE.Mesh; // First intersected object
+        const nodeId = clickedMesh.userData.nodeId;
+        if (nodeId && isNodeClickable(nodeId)) {
+          onNodeClick(nodeId);
+        }
+      }
+    };
+
+    const canvas = rendererRef.current.domElement;
+    canvas.addEventListener('click', handleClick);
+
+    const handleMouseMove = (event: MouseEvent) => {
+      if (!rendererRef.current || !cameraRef.current || !sceneRef.current || !nodesGroupRef.current || !currentMount) return;
+
+      const rect = currentMount.getBoundingClientRect();
+      if (!rect) return;
+
+      mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+      raycaster.setFromCamera(mouse, cameraRef.current);
+
+      const nodeMeshes = nodesGroupRef.current.children.filter(
+        (child): child is THREE.Mesh =>
+          child instanceof THREE.Mesh &&
+          child.userData.nodeId &&
+          !child.userData.isFractalChild
+      );
+
+      const intersects = raycaster.intersectObjects(nodeMeshes);
+
+      if (intersects.length > 0) {
+        const hoveredMesh = intersects[0].object as THREE.Mesh;
+        const nodeId = hoveredMesh.userData.nodeId;
+
+        if (nodeId && isNodeClickable(nodeId)) {
+          canvas.style.cursor = 'pointer';
+          setHoveredNodeId(nodeId);
+        } else {
+          canvas.style.cursor = 'default';
+          setHoveredNodeId(null);
+        }
+      } else {
+        canvas.style.cursor = 'default';
+        setHoveredNodeId(null);
+      }
+    };
+
+    canvas.addEventListener('mousemove', handleMouseMove);
+
+    return () => {
+      canvas.removeEventListener('click', handleClick);
+      canvas.removeEventListener('mousemove', handleMouseMove);
+      // Reset cursor on cleanup in case it was left as pointer
+      if (canvas) {
+        canvas.style.cursor = 'default';
+      }
+    };
+  }, [nodes, visitedNodes, currentNodeId, onNodeClick, rendererRef, cameraRef, sceneRef, nodesGroupRef, mountRef, isNodeClickable, setHoveredNodeId]);
+
+  useEffect(() => {
+    if (!sceneRef.current || !nodes) return;
+
+    // Remove existing lines
+    const childrenToRemove = sceneRef.current.children.slice(); // Create a copy to iterate over
+    childrenToRemove.forEach(child => {
+      if (child.userData.isConnectionLine) {
+        sceneRef.current!.remove(child);
+        if (child instanceof THREE.Line) {
+          child.geometry.dispose();
+          (child.material as THREE.Material).dispose(); // Type assertion for material
+        }
+      }
+    });
+
+    // Create new lines
+    nodes.forEach(node => {
+      if (node.connectedNodes) {
+        node.connectedNodes.forEach(connectedNodeId => {
+          const connectedNode = nodes.find(n => n.id === connectedNodeId);
+          if (!connectedNode) return;
+
+          // Ensure we don't draw a line from a node to itself (though typically not in connectedNodes)
+          if (node.id === connectedNode.id) return;
+
+          const worldX1 = (node.x / 600 - 0.5) * 12; // Adjusted to match node positioning
+          const worldY1 = (node.y / 500 - 0.5) * -10; // Adjusted to match node positioning
+          const worldZ1 = 0; // Lines are on the Z=0 plane for now
+
+          const worldX2 = (connectedNode.x / 600 - 0.5) * 12; // Adjusted to match node positioning
+          const worldY2 = (connectedNode.y / 500 - 0.5) * -10; // Adjusted to match node positioning
+          const worldZ2 = 0; // Lines are on the Z=0 plane for now
+
+          const points = [
+            new THREE.Vector3(worldX1, worldY1, worldZ1),
+            new THREE.Vector3(worldX2, worldY2, worldZ2)
+          ];
+
+          const geometry = new THREE.BufferGeometry().setFromPoints(points);
+
+          const isActive = visitedNodes.includes(node.id) && visitedNodes.includes(connectedNodeId);
+          const material = new THREE.LineBasicMaterial({
+            color: isActive ? 0x16C79A : 0x555555, // Active: Greenish-Cyan, Inactive: Grey
+            opacity: isActive ? 0.8 : 0.3,
+            transparent: true,
+            linewidth: isActive ? 2 : 1, // Thicker for active lines (Note: linewidth might not be supported by all WebGL renderers)
+          });
+          // For LineDashedMaterial, if you want to use it later:
+          // const material = new THREE.LineDashedMaterial({
+          //   color: isActive ? 0x16C79A : 0x555555,
+          //   dashSize: 0.1,
+          //   gapSize: 0.05,
+          //   opacity: isActive ? 0.8 : 0.3,
+          //   transparent: true,
+          // });
+
+          const line = new THREE.Line(geometry, material);
+          // line.computeLineDistances(); // Required for LineDashedMaterial
+
+          line.userData = { isConnectionLine: true };
+          sceneRef.current!.add(line);
+        });
+      }
+    });
+  }, [nodes, visitedNodes, currentNodeId, sceneRef]); // Dependencies for line updates
 
   const getNodeState = (nodeId: string) => {
     if (nodeId === currentNodeId) return "current";
