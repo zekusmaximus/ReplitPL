@@ -39,6 +39,30 @@ export default function MapPanel({ nodes, visitedNodes, currentNodeId, onNodeCli
   const [nodeVisitTimestamps, setNodeVisitTimestamps] = useState<Record<string, number>>({});
   const prevNodeIdRef = useRef<string | null>(null);
 
+  const getNodeState = (nodeId: string) => {
+    if (nodeId === currentNodeId) return "current";
+    if (visitedNodes.includes(nodeId)) return "visited";
+    
+    const node = nodes.find(n => n.id === nodeId);
+    if (!node) return "locked";
+    
+    const hasConnectedVisitedNode = nodes.some(n => 
+      visitedNodes.includes(n.id) && 
+      n.connectedNodes?.includes(nodeId)
+    );
+    
+    if (hasConnectedVisitedNode || (nodeId === "origin")) {
+      return "available";
+    }
+    
+    return "locked";
+  };
+
+  const isNodeClickable = (nodeId: string) => {
+    const state = getNodeState(nodeId);
+    return state === "visited" || state === "current" || state === "available";
+  };
+
   // const getEdgeKey = (nodeId1: string, nodeId2: string): string => { // For SVG edges
   //   return [nodeId1, nodeId2].sort().join('-');
   // };
@@ -546,30 +570,6 @@ export default function MapPanel({ nodes, visitedNodes, currentNodeId, onNodeCli
       }
     });
   }, [nodes, visitedNodes, currentNodeId, sceneRef]); // Dependencies for line updates
-
-  const getNodeState = (nodeId: string) => {
-    if (nodeId === currentNodeId) return "current";
-    if (visitedNodes.includes(nodeId)) return "visited";
-    
-    const node = nodes.find(n => n.id === nodeId);
-    if (!node) return "locked";
-    
-    const hasConnectedVisitedNode = nodes.some(n => 
-      visitedNodes.includes(n.id) && 
-      n.connectedNodes?.includes(nodeId)
-    );
-    
-    if (hasConnectedVisitedNode || (nodeId === "origin")) {
-      return "available";
-    }
-    
-    return "locked";
-  };
-
-  const isNodeClickable = (nodeId: string) => {
-    const state = getNodeState(nodeId);
-    return state === "visited" || state === "current" || state === "available";
-  };
 
   // const getNodeBackgroundStyle = (nodeId: string, state: string): React.CSSProperties => {
   //   const lastVisitedTimestamp = nodeVisitTimestamps[nodeId];
