@@ -51,6 +51,8 @@ export default function StoryPage() {
     },
     onSuccess: (data) => { // data is the response from the server
       console.log("[CLIENT LOG] makeChoiceMutation successful. New progress:", data); // Added log
+      // Automatically navigate to the new current node
+      setSelectedNodeId(data.currentNode);
       queryClient.invalidateQueries({ queryKey: [`/api/progress/${userId}`] });
     },
     onError: (error) => { // Added onError

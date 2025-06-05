@@ -104,11 +104,10 @@ export default function MapPanel({ nodes, visitedNodes, currentNodeId, onNodeCli
       scene.add(directionalLight);
       directionalLightRef.current = directionalLight;
 
-      // OrbitControls - optimized for 3D constellation viewing
+      // OrbitControls - user-controlled only
       if (cameraRef.current && rendererRef.current.domElement) {
         const controls = new OrbitControls(cameraRef.current, rendererRef.current.domElement);
-        controls.autoRotate = true; // Enable gentle auto-rotation to show 3D depth
-        controls.autoRotateSpeed = 0.5; // Slow rotation to showcase constellation
+        controls.autoRotate = false; // Disable auto-rotation, user controls only
         controls.enableDamping = true;
         controls.dampingFactor = 0.05; // Smoother movement
         controls.enableZoom = true;
@@ -250,7 +249,7 @@ export default function MapPanel({ nodes, visitedNodes, currentNodeId, onNodeCli
         // No dispose method for lights themselves, they are just removed.
       };
     }
-  }, [nodes, visitedNodes, currentNodeId]); // Add dependencies here
+  }, [nodes]); // Remove currentNodeId to prevent camera jumping
 
   useEffect(() => {
     if (!sceneRef.current || !nodes || !nodesGroupRef.current) return;
@@ -392,7 +391,7 @@ export default function MapPanel({ nodes, visitedNodes, currentNodeId, onNodeCli
       }
     });
 
-  }, [nodes, visitedNodes, currentNodeId, nodeVisitTimestamps, visitFrequency]); // Added visitFrequency
+  }, [nodes, visitedNodes, currentNodeId, nodeVisitTimestamps, visitFrequency]); // Keep currentNodeId for visual updates only
 
 
   useEffect(() => {
