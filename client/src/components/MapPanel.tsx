@@ -104,18 +104,20 @@ export default function MapPanel({ nodes, visitedNodes, currentNodeId, onNodeCli
       scene.add(directionalLight);
       directionalLightRef.current = directionalLight;
 
-      // OrbitControls
+      // OrbitControls - optimized for 3D constellation viewing
       if (cameraRef.current && rendererRef.current.domElement) {
         const controls = new OrbitControls(cameraRef.current, rendererRef.current.domElement);
-        controls.autoRotate = false; // Changed
-        // controls.autoRotateSpeed = 0.3; // Commented out as autoRotate is false
-        controls.enableDamping = true; // Verified
-        controls.dampingFactor = 0.1; // Changed
+        controls.autoRotate = true; // Enable gentle auto-rotation to show 3D depth
+        controls.autoRotateSpeed = 0.5; // Slow rotation to showcase constellation
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05; // Smoother movement
         controls.enableZoom = true;
-        controls.enablePan = false; // Changed
-        controls.minDistance = 5;
-        controls.maxDistance = 20;
-        controls.target.set(0, 0, 0); // Assuming nodes are centered around the origin
+        controls.enablePan = true; // Allow panning to explore the constellation
+        controls.minDistance = 8; // Closer minimum for detail viewing
+        controls.maxDistance = 35; // Further maximum for full constellation view
+        controls.target.set(0, 0, 0); // Center on constellation
+        controls.minPolarAngle = 0; // Allow full vertical rotation
+        controls.maxPolarAngle = Math.PI; // Allow full vertical rotation
         orbitControlsRef.current = controls;
       }
 
