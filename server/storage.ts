@@ -85,6 +85,105 @@ export class MemStorage implements IStorage {
       }
     ];
 
+    const missingNodes: InsertStoryNode[] = [
+      {
+        id: "salvation",
+        title: "Path of Salvation",
+        content: "You chose to help the entities from the parallel dimension. This path explores the consequences and challenges of that decision. Placeholder content.",
+        location: "Interdimensional Nexus",
+        readTime: "3 min read",
+        x: 50, // Approximate X
+        y: 450, // Approximate Y
+        isLocked: false,
+        connectedNodes: ["origin"],
+        choices: [{ id: "return-origin", text: "Return to Origin", description: "Go back to the start.", icon: "fas fa-home", nextNode: "origin" }]
+      },
+      {
+        id: "sacrifice",
+        title: "Path of Sacrifice",
+        content: "You chose to prioritize your own dimension. This path explores the ramifications of that choice. Placeholder content.",
+        location: "Sealed Laboratory",
+        readTime: "3 min read",
+        x: 150, // Approximate X
+        y: 450, // Approximate Y
+        isLocked: false,
+        connectedNodes: ["origin"],
+        choices: [{ id: "return-origin", text: "Return to Origin", description: "Go back to the start.", icon: "fas fa-home", nextNode: "origin" }]
+      },
+      {
+        id: "merge",
+        title: "Reality Merge",
+        content: "You and your alternate self attempt to merge realities. This path details the outcome. Placeholder content.",
+        location: "Convergent Point",
+        readTime: "3 min read",
+        x: 350, // Approximate X
+        y: 450, // Approximate Y
+        isLocked: false,
+        connectedNodes: ["origin"],
+        choices: [{ id: "return-origin", text: "Return to Origin", description: "Go back to the start.", icon: "fas fa-home", nextNode: "origin" }]
+      },
+      {
+        id: "conflict",
+        title: "Dimensional Conflict",
+        content: "You chose to fight for your dimension's supremacy. This path follows the ensuing conflict. Placeholder content.",
+        location: "Battleground of Realities",
+        readTime: "3 min read",
+        x: 450, // Approximate X
+        y: 450, // Approximate Y
+        isLocked: false,
+        connectedNodes: ["origin"],
+        choices: [{ id: "return-origin", text: "Return to Origin", description: "Go back to the start.", icon: "fas fa-home", nextNode: "origin" }]
+      },
+      {
+        id: "deep-state",
+        title: "Inside the Deep State",
+        content: "You decided to play along with the government's agenda. This path explores your journey within the deep state. Placeholder content.",
+        location: "Classified Operations Center",
+        readTime: "3 min read",
+        x: -150, // Approximate X
+        y: 400,  // Approximate Y
+        isLocked: false,
+        connectedNodes: ["origin"],
+        choices: [{ id: "return-origin", text: "Return to Origin", description: "Go back to the start.", icon: "fas fa-home", nextNode: "origin" }]
+      },
+      {
+        id: "escape",
+        title: "The Great Escape",
+        content: "You attempted to escape and expose the government. This path follows your dangerous journey. Placeholder content.",
+        location: "On the Run",
+        readTime: "3 min read",
+        x: 0,    // Approximate X
+        y: 400,  // Approximate Y
+        isLocked: false,
+        connectedNodes: ["origin"],
+        choices: [{ id: "return-origin", text: "Return to Origin", description: "Go back to the start.", icon: "fas fa-home", nextNode: "origin" }]
+      },
+      {
+        id: "underground-network",
+        title: "Underground Network Operations",
+        content: "You lead a critical mission for the resistance. This path details your efforts with the underground network. Placeholder content.",
+        location: "Covert Command Center",
+        readTime: "3 min read",
+        x: 200,  // Approximate X
+        y: 400,  // Approximate Y
+        isLocked: false,
+        connectedNodes: ["origin"],
+        choices: [{ id: "return-origin", text: "Return to Origin", description: "Go back to the start.", icon: "fas fa-home", nextNode: "origin" }]
+      },
+      {
+        id: "final-stand",
+        title: "The Final Stand",
+        content: "You seek asylum to expose the truth. This path follows your efforts to make a final stand from a safe haven. Placeholder content.",
+        location: "Neutral Territory Embassy",
+        readTime: "3 min read",
+        x: 300,  // Approximate X
+        y: 400,  // Approximate Y
+        isLocked: false,
+        connectedNodes: ["origin"],
+        choices: [{ id: "return-origin", text: "Return to Origin", description: "Go back to the start.", icon: "fas fa-home", nextNode: "origin" }]
+      }
+    ];
+
     const expansionNodes: InsertStoryNode[] = [
       {
         id: "conspiracy",
@@ -338,7 +437,7 @@ But the most shocking discovery was yet to come. In this parallel dimension, she
           }
         ]
       }
-    ].concat(additionalNodes, expansionNodes);
+    ].concat(additionalNodes, expansionNodes, missingNodes);
 
     nodes.forEach(node => {
       this.storyNodes.set(node.id, node as StoryNode);

@@ -77,6 +77,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/story/choice", async (req, res) => {
     try {
       const { userId, nodeId, choiceId } = req.body;
+      console.log(`[SERVER LOG] /api/story/choice received: userId=${userId}, nodeId=${nodeId}, choiceId=${choiceId}`); // Added log
       
       // Get current progress
       let progress = await storage.getUserProgress(userId);
@@ -101,31 +102,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid choice" });
       }
 
-      // Update progress with the new choice
+      // Initialize newCurrentNode and newVisitedNodes based on current progress
+      let newCurrentNode = progress.currentNode;
+      let newVisitedNodes = [...progress.visitedNodes];
+
+      if (choice.nextNode) {
+        const targetNode = await storage.getStoryNode(choice.nextNode);
+        if (!targetNode) {
+          console.warn(`Attempted to navigate to non-existent node ID: '${choice.nextNode}' from node: '${nodeId}' via choice: '${choiceId}'. User remains on current node.`);
+          // User remains on current node, newCurrentNode and newVisitedNodes are already set to current values.
+        } else {
+          // Valid target node, update current node and visited list
+          newCurrentNode = choice.nextNode;
+          if (!newVisitedNodes.includes(choice.nextNode)) {
+            newVisitedNodes.push(choice.nextNode);
+          }
+        }
+      }
+
+      // Update progress with the new choice being made
       const newChoices = [...(progress.choices as any[]), {
         nodeId,
         choiceId,
         timestamp: new Date().toISOString(),
       }];
 
-      let newVisitedNodes = [...progress.visitedNodes];
-      let newCurrentNode = progress.currentNode;
-
-      if (choice.nextNode) {
-        newCurrentNode = choice.nextNode;
-        if (!newVisitedNodes.includes(choice.nextNode)) {
-          newVisitedNodes.push(choice.nextNode);
-        }
-      }
-
       const updatedProgress = await storage.updateUserProgress(userId, {
-        visitedNodes: newVisitedNodes,
-        currentNode: newCurrentNode,
+        visitedNodes: newVisitedNodes, // Use the (potentially updated) list
+        currentNode: newCurrentNode,   // Use the (potentially updated) current node
         choices: newChoices,
       });
 
+      console.log(`[SERVER LOG] User: ${userId}, Current Node: ${newCurrentNode}, Choice ID: ${choiceId}, Next Node: ${choice.nextNode || 'N/A'}, Visited Nodes: ${JSON.stringify(newVisitedNodes)}`); // Added log
+
       res.json(updatedProgress);
     } catch (error) {
+      console.error(`[SERVER ERROR] /api/story/choice: ${error.message}`, error); // Added error log
       res.status(500).json({ message: "Failed to process choice" });
     }
   });
