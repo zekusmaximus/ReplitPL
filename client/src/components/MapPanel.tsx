@@ -184,6 +184,26 @@ export default function MapPanel({ nodes, visitedNodes, currentNodeId, onNodeCli
           }
         });
 
+        // Animate shimmer effect on active connection lines
+        if (sceneRef.current) {
+          sceneRef.current.children.forEach(child => {
+            if (child.userData.isConnectionLine && child.userData.isActive) {
+              const line = child as THREE.Line;
+              const material = line.material as THREE.LineBasicMaterial;
+              const time = Date.now() * 0.003; // Time-based animation
+              const shimmerPhase = child.userData.shimmerPhase || 0;
+              
+              // Create shimmer effect by oscillating opacity
+              const shimmerIntensity = 0.3; // How much the opacity varies
+              const shimmerSpeed = 2.0; // How fast it shimmers
+              const baseOpacity = child.userData.baseOpacity || 0.8;
+              
+              material.opacity = baseOpacity + Math.sin(time * shimmerSpeed + shimmerPhase) * shimmerIntensity;
+              material.opacity = Math.max(0.2, Math.min(1.0, material.opacity)); // Clamp between 0.2 and 1.0
+            }
+          });
+        }
+
         // testCubeRef.current?.rotation.x += 0.01; // Example animation for the test cube
         // testCubeRef.current?.rotation.y += 0.01;
         if (rendererRef.current && sceneRef.current && cameraRef.current) {
@@ -596,23 +616,18 @@ export default function MapPanel({ nodes, visitedNodes, currentNodeId, onNodeCli
           const isActive = visitedNodes.includes(node.id) && visitedNodes.includes(connectedNodeId);
           const material = new THREE.LineBasicMaterial({
             color: isActive ? 0x16C79A : 0x555555, // Active: Greenish-Cyan, Inactive: Grey
-            opacity: isActive ? 0.8 : 0.3,
+            opacity: isActive ? 0.8 : 0.0, // Hide inactive lines completely
             transparent: true,
             linewidth: isActive ? 2 : 1, // Thicker for active lines (Note: linewidth might not be supported by all WebGL renderers)
           });
-          // For LineDashedMaterial, if you want to use it later:
-          // const material = new THREE.LineDashedMaterial({
-          //   color: isActive ? 0x16C79A : 0x555555,
-          //   dashSize: 0.1,
-          //   gapSize: 0.05,
-          //   opacity: isActive ? 0.8 : 0.3,
-          //   transparent: true,
-          // });
 
           const line = new THREE.Line(geometry, material);
-          // line.computeLineDistances(); // Required for LineDashedMaterial
-
-          line.userData = { isConnectionLine: true };
+          line.userData = { 
+            isConnectionLine: true, 
+            isActive: isActive,
+            baseOpacity: isActive ? 0.8 : 0.0,
+            shimmerPhase: Math.random() * Math.PI * 2 // Random phase for shimmer variation
+          };
           sceneRef.current!.add(line);
         });
       }
