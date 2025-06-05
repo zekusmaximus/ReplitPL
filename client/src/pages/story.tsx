@@ -37,16 +37,25 @@ export default function StoryPage() {
   // Make choice mutation
   const makeChoiceMutation = useMutation({
     mutationFn: async ({ nodeId, choiceId }: { nodeId: string; choiceId: string }) => {
+      console.log(`[CLIENT LOG] makeChoiceMutation: Making choice on node '${nodeId}' with choiceId '${choiceId}' for userId '${userId}'`); // Added log
       const response = await apiRequest("POST", "/api/story/choice", {
         userId,
         nodeId,
         choiceId,
       });
+      if (!response.ok) { // Check if response is ok
+        const errorData = await response.json().catch(() => ({ message: "Unknown error structure" }));
+        throw new Error(errorData.message || `Request failed with status ${response.status}`);
+      }
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => { // data is the response from the server
+      console.log("[CLIENT LOG] makeChoiceMutation successful. New progress:", data); // Added log
       queryClient.invalidateQueries({ queryKey: [`/api/progress/${userId}`] });
     },
+    onError: (error) => { // Added onError
+      console.error("[CLIENT ERROR] makeChoiceMutation failed:", error);
+    }
   });
 
   const currentNode = progress?.currentNode ? nodes.find(n => n.id === progress.currentNode) : nodes.find(n => n.id === 'origin');

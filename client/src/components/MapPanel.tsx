@@ -262,7 +262,7 @@ export default function MapPanel({ nodes, visitedNodes, currentNodeId, onNodeCli
     nodes.forEach(node => {
       const worldX = (node.x / 600 - 0.5) * 12; // Adjusted spread
       const worldY = (node.y / 500 - 0.5) * -10; // Adjusted spread & Invert Y
-      const worldZ = (Math.random() - 0.5) * 0.5; // Small random Z for depth variation
+      const worldZ = (node.x / 600) * 8 - 4;
 
       const geometry = new THREE.IcosahedronGeometry(0.4, 1); // Adjusted size and detail
       const material = new THREE.MeshStandardMaterial({
