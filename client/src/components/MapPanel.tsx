@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react"; // Added useCallback
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { StoryNode } from "@shared/schema";
@@ -11,6 +11,91 @@ import type { StoryNode } from "@shared/schema";
 // }
 // const MAX_TRAILS = 3; // Max number of trails to show
 // const TRAIL_DURATION = 5000; // 5 seconds in milliseconds
+
+// Define triangleNodeConfiguration near the top of the file
+const triangleNodeConfiguration = {
+  // ARCHAEOLOGIST CHARACTER (Discovery & Ancient Knowledge)
+  'origin': { characterType: 'archaeologist', nodeRole: 'center' },
+  'discovery': { characterType: 'archaeologist', nodeRole: 'perspective', characterIndex: 0 },
+  'revelation': { characterType: 'archaeologist', nodeRole: 'perspective', characterIndex: 1 },
+  'contact': { characterType: 'archaeologist', nodeRole: 'perspective', characterIndex: 2 },
+
+  // ALGORITHM CHARACTER (Digital Consciousness & AI)
+  'paradox': { characterType: 'algorithm', nodeRole: 'center' },
+  'merge': { characterType: 'algorithm', nodeRole: 'perspective', characterIndex: 0 },
+  'conflict': { characterType: 'algorithm', nodeRole: 'perspective', characterIndex: 1 },
+  'alternative-path': { characterType: 'algorithm', nodeRole: 'perspective', characterIndex: 2 },
+
+  // LAST HUMAN CHARACTER (Isolation & Choice)
+  'isolation': { characterType: 'last-human', nodeRole: 'center' },
+  'salvation': { characterType: 'last-human', nodeRole: 'perspective', characterIndex: 0 },
+  'sacrifice': { characterType: 'last-human', nodeRole: 'perspective', characterIndex: 1 },
+  'evacuation': { characterType: 'last-human', nodeRole: 'perspective', characterIndex: 2 }
+};
+
+// Implement calculateTrianglePosition
+const calculateTrianglePosition = (nodeId: string): { x: number, y: number, z: number } => {
+  const nodeConfig = triangleNodeConfiguration[nodeId as keyof typeof triangleNodeConfiguration];
+  if (!nodeConfig) {
+    console.warn(`No triangle configuration found for node ID: ${nodeId}`);
+    return { x: 0, y: 0, z: 0 }; // Default position if node not in config
+  }
+
+  const characterPositions = {
+    'archaeologist': { angle: Math.PI / 2, radius: 12, x: 0, y: 0, z: 0 }, // Top
+    'algorithm': { angle: 7 * Math.PI / 6, radius: 12, x: 0, y: 0, z: 0 }, // Bottom left
+    'last-human': { angle: 11 * Math.PI / 6, radius: 12, x: 0, y: 0, z: 0 } // Bottom right
+  };
+
+  // Calculate center positions first
+  Object.keys(characterPositions).forEach(charType => {
+    const charKey = charType as keyof typeof characterPositions;
+    characterPositions[charKey].x = characterPositions[charKey].radius * Math.cos(characterPositions[charKey].angle);
+    characterPositions[charKey].y = characterPositions[charKey].radius * Math.sin(characterPositions[charKey].angle);
+  });
+
+  const centerPos = characterPositions[nodeConfig.characterType as keyof typeof characterPositions];
+
+  if (nodeConfig.nodeRole === 'center') {
+    return {
+      x: centerPos.x,
+      y: centerPos.y,
+      z: 0
+    };
+  } else {
+    const subRadius = 4;
+    // Ensure characterIndex is treated as a number for calculations
+    const charIndex = Number(nodeConfig.characterIndex);
+    const subAngle = centerPos.angle + (charIndex * 2 * Math.PI / 3) + (Math.PI / 6); // Add offset for sub-triangle rotation
+
+    return {
+      x: centerPos.x + subRadius * Math.cos(subAngle),
+      y: centerPos.y + subRadius * Math.sin(subAngle),
+      z: (charIndex - 1) * 2 // Slight Z variation for depth
+    };
+  }
+};
+
+// Implement projectToScreen
+const projectToScreen = (worldPosition: THREE.Vector3, camera: THREE.Camera, renderer: THREE.WebGLRenderer): { x: number, y: number } | null => {
+  if (!camera || !renderer) return null; // Guard against null camera/renderer
+
+  const vector = worldPosition.clone();
+  vector.project(camera);
+
+  const canvas = renderer.domElement;
+  const rect = canvas.getBoundingClientRect();
+
+  // Check if the point is behind the camera
+  // if (vector.z > 1) { // This check might be needed if points behind camera cause issues
+  //   return null;
+  // }
+
+  return {
+    x: ((vector.x + 1) / 2) * rect.width + rect.left, // Add rect.left for absolute screen position
+    y: ((-vector.y + 1) / 2) * rect.height + rect.top // Add rect.top for absolute screen position
+  };
+};
 
 interface MapPanelProps {
   nodes: StoryNode[];
@@ -37,6 +122,7 @@ export default function MapPanel({ nodes, visitedNodes, currentNodeId, onNodeCli
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null); // Keep for HTML tooltips for now
   // const [traversalFrequency, setTraversalFrequency] = useState<Record<string, number>>({}); // Still for SVG
   const [nodeVisitTimestamps, setNodeVisitTimestamps] = useState<Record<string, number>>({});
+  const [tooltipScreenPosition, setTooltipScreenPosition] = useState<{x: number, y: number} | null>(null); // New state for tooltip
   const prevNodeIdRef = useRef<string | null>(null);
 
   const getNodeState = (nodeId: string) => {
@@ -287,67 +373,63 @@ export default function MapPanel({ nodes, visitedNodes, currentNodeId, onNodeCli
     const FRACTAL_THRESHOLD = 3;
     const FRACTAL_CHILD_COUNT = 3;
     const FRACTAL_CHILD_SCALE = 0.3;
-    const FRACTAL_CHILD_OFFSET_RADIUS = 0.5;
+    const FRACTAL_CHILD_OFFSET_RADIUS = 0.5; // This is relative to parent's position
 
-    // Create and position new 3D nodes with proper constellation spread
-    nodes.forEach((node, index) => {
-      // Create a more spherical 3D distribution
-      const baseRadius = 8;
-      const radiusVariation = 3;
-      
-      // Use node position as seed for consistent but varied placement
-      const seedX = node.x / 600;
-      const seedY = node.y / 500;
-      const seedZ = (seedX + seedY) % 1;
-      
-      // Convert to spherical coordinates for constellation effect
-      const phi = seedX * Math.PI * 2; // Azimuth angle
-      const theta = seedY * Math.PI; // Polar angle
-      const radius = baseRadius + (seedZ - 0.5) * radiusVariation;
-      
-      const worldX = radius * Math.sin(theta) * Math.cos(phi);
-      const worldY = radius * Math.cos(theta);
-      const worldZ = radius * Math.sin(theta) * Math.sin(phi);
+    const characterColors = {
+      'archaeologist': { base: 0x8B4513, emissive: 0xCD853F, accent: 0xDEB887 },
+      'algorithm': { base: 0x0066CC, emissive: 0x00AAFF, accent: 0x4CAF50 },
+      'last-human': { base: 0x8B0000, emissive: 0xFF4444, accent: 0xFF6B6B }
+    };
+
+    // Create and position new 3D nodes
+    nodes.forEach((node) => {
+      const nodeConfig = triangleNodeConfiguration[node.id as keyof typeof triangleNodeConfiguration];
+      if (!nodeConfig) {
+        console.warn(`Node ${node.id} not in triangleConfiguration, skipping mesh creation.`);
+        return;
+      }
+
+      const { x: worldX, y: worldY, z: worldZ } = calculateTrianglePosition(node.id);
 
       const geometry = new THREE.IcosahedronGeometry(0.4, 1); // Adjusted size and detail
+
+      const charColors = characterColors[nodeConfig.characterType as keyof typeof characterColors];
+      const baseColorHex = charColors.base;
+      let emissiveColorHex = 0x000000; // Default no emission
+      let emissiveIntensity = 1.0;
+
       const material = new THREE.MeshStandardMaterial({
-        color: 0xffffff, // Default white
-        roughness: 0.4, // Adjusted roughness
-        metalness: 0.2, // Adjusted metalness
+        color: baseColorHex, // Set base color initially
+        roughness: 0.4,
+        metalness: 0.2,
+        transparent: false,
+        opacity: 1.0,
       });
 
-      const state = getNodeState(node.id); // Get node state
-
-      let baseColorHex = 0xffffff;
-      let emissiveColorHex = 0x000000;
-      let emissiveIntensity = 1.0;
-      material.transparent = false; // Reset transparency
-      material.opacity = 1.0;       // Reset opacity
+      const state = getNodeState(node.id);
 
       if (state === "current") {
-        baseColorHex = 0xffaa33; // Amber base
-        emissiveColorHex = 0xffaa33; // Amber emissive
+        emissiveColorHex = charColors.emissive;
         emissiveIntensity = 1.5;
       } else if (state === "visited") {
-        baseColorHex = 0x00aaff; // Cyan base
-        emissiveColorHex = 0x00aaff;
+        emissiveColorHex = charColors.emissive;
         emissiveIntensity = 1.0;
       } else if (state === "available") {
-        baseColorHex = 0x0077cc; // Darker Cyan/Blue base
-        emissiveColorHex = 0x0077cc;
+        emissiveColorHex = charColors.emissive; // Or a muted version: new THREE.Color(charColors.emissive).multiplyScalar(0.7).getHex();
         emissiveIntensity = 0.7;
+        material.color.multiplyScalar(0.8); // Darken base slightly for available
       } else { // locked
-        baseColorHex = 0x555555; // Grey base
+        material.color.multiplyScalar(0.4); // Darken base significantly for locked
         emissiveColorHex = 0x111111; // Very dim emissive
-        emissiveIntensity = 0.5;
+        emissiveIntensity = 0.3;
         material.transparent = true;
-        material.opacity = 0.7;
+        material.opacity = 0.6;
       }
-      material.color.setHex(baseColorHex);
+
       material.emissive.setHex(emissiveColorHex);
       material.emissiveIntensity = emissiveIntensity;
 
-      // Freshness effect
+      // Freshness effect (applied on top of state-based emissive properties)
       const lastVisitedTimestamp = nodeVisitTimestamps[node.id];
       const now = Date.now();
       const MAX_FRESHNESS_DURATION = 30000; // 30 seconds
@@ -358,22 +440,29 @@ export default function MapPanel({ nodes, visitedNodes, currentNodeId, onNodeCli
         if (ageMillis < MAX_FRESHNESS_DURATION) {
           const freshnessFactor = 1 - (ageMillis / MAX_FRESHNESS_DURATION);
           const dynamicIntensityBonus = freshnessFactor * (1 - MIN_INTENSITY_FACTOR);
-          material.emissiveIntensity *= (MIN_INTENSITY_FACTOR + dynamicIntensityBonus);
+          // Apply freshness to the already state-modified intensity
+          material.emissiveIntensity = (material.emissiveIntensity * MIN_INTENSITY_FACTOR) + (material.emissiveIntensity * dynamicIntensityBonus);
           if (state === 'current') {
+            // Ensure current node maintains a minimum brightness if freshness would reduce it too much
             material.emissiveIntensity = Math.max(material.emissiveIntensity, 1.2);
           }
-        } else if (state !== 'current') {
+        } else if (state !== 'current') { // If older than max freshness duration and not current
           material.emissiveIntensity *= MIN_INTENSITY_FACTOR;
         }
       } else if (state !== 'current' && state !== 'available' && state !== 'locked') {
-         // For nodes that are 'visited' but somehow don't have a timestamp (e.g. initial state)
+         // For 'visited' nodes without a timestamp (e.g., initial state), apply min intensity factor
         material.emissiveIntensity *= MIN_INTENSITY_FACTOR;
       }
 
+
       const mesh = new THREE.Mesh(geometry, material);
       mesh.position.set(worldX, worldY, worldZ);
-      mesh.userData = { nodeId: node.id, isFractalChild: false }; // Mark as not a fractal child
-
+      mesh.userData = {
+        nodeId: node.id,
+        isFractalChild: false,
+        characterType: nodeConfig.characterType,
+        nodeRole: nodeConfig.nodeRole
+      };
       nodesGroupRef.current.add(mesh);
 
       // Fractal Children
@@ -381,26 +470,25 @@ export default function MapPanel({ nodes, visitedNodes, currentNodeId, onNodeCli
       if (frequency >= FRACTAL_THRESHOLD) {
         for (let i = 0; i < FRACTAL_CHILD_COUNT; i++) {
           const childGeometry = new THREE.IcosahedronGeometry(0.25 * FRACTAL_CHILD_SCALE, 0);
-          // Ensure child material also reflects freshness, or has its own logic
           const childMaterial = new THREE.MeshStandardMaterial({
-            color: material.color.clone(), // Inherit base color
-            roughness: 0.7, // Slightly higher roughness for children
-            metalness: material.metalness * 0.8, // Slightly less metalness
-            emissive: material.emissive.clone(), // Inherit emissive color
-            emissiveIntensity: material.emissiveIntensity * 0.5, // Children are less bright than parent
+            color: material.color.clone(), // Inherit base character color (already state adjusted)
+            roughness: 0.7,
+            metalness: material.metalness * 0.8,
+            emissive: material.emissive.clone(), // Inherit emissive color (already state adjusted)
+            emissiveIntensity: material.emissiveIntensity * 0.5, // Children less bright
           });
-          if (material.opacity < 1) { // Inherit transparency from parent
+          if (material.opacity < 1) { // Inherit transparency
             childMaterial.transparent = true;
-            childMaterial.opacity = material.opacity * 0.9; // Slightly less transparent than parent
+            childMaterial.opacity = material.opacity * 0.9;
           }
 
           const childMesh = new THREE.Mesh(childGeometry, childMaterial);
           const angle = (i / FRACTAL_CHILD_COUNT) * Math.PI * 2;
 
-          // Position relative to the parent mesh's actual world position
-          childMesh.position.x = mesh.position.x + Math.cos(angle) * FRACTAL_CHILD_OFFSET_RADIUS;
-          childMesh.position.y = mesh.position.y + Math.sin(angle) * FRACTAL_CHILD_OFFSET_RADIUS;
-          childMesh.position.z = mesh.position.z + (Math.random() - 0.5) * 0.2;
+          // Position relative to the parent mesh's new world position
+          childMesh.position.x = worldX + Math.cos(angle) * FRACTAL_CHILD_OFFSET_RADIUS;
+          childMesh.position.y = worldY + Math.sin(angle) * FRACTAL_CHILD_OFFSET_RADIUS;
+          childMesh.position.z = worldZ + (Math.random() - 0.5) * 0.2; // Keep Z variation
 
           childMesh.userData = {
             isFractalChild: true,
@@ -528,13 +616,26 @@ export default function MapPanel({ nodes, visitedNodes, currentNodeId, onNodeCli
         if (nodeId && isNodeClickable(nodeId)) {
           canvas.style.cursor = 'pointer';
           setHoveredNodeId(nodeId);
+          const worldPos3D = calculateTrianglePosition(nodeId);
+          if (cameraRef.current && rendererRef.current) {
+            const screenPos = projectToScreen(
+              new THREE.Vector3(worldPos3D.x, worldPos3D.y, worldPos3D.z),
+              cameraRef.current,
+              rendererRef.current
+            );
+            setTooltipScreenPosition(screenPos);
+          } else {
+            setTooltipScreenPosition(null);
+          }
         } else {
           canvas.style.cursor = 'default';
           setHoveredNodeId(null);
+          setTooltipScreenPosition(null);
         }
       } else {
         canvas.style.cursor = 'default';
         setHoveredNodeId(null);
+        setTooltipScreenPosition(null);
       }
     };
 
@@ -551,7 +652,7 @@ export default function MapPanel({ nodes, visitedNodes, currentNodeId, onNodeCli
   }, [nodes, visitedNodes, currentNodeId, onNodeClick, rendererRef, cameraRef, sceneRef, nodesGroupRef, mountRef, isNodeClickable, setHoveredNodeId]);
 
   useEffect(() => {
-    if (!sceneRef.current || !nodes) return;
+    if (!sceneRef.current || !nodes) return; // Hook for lines should also be reviewed for new positions
 
     // Remove existing lines
     const childrenToRemove = sceneRef.current.children.slice(); // Create a copy to iterate over
@@ -572,43 +673,22 @@ export default function MapPanel({ nodes, visitedNodes, currentNodeId, onNodeCli
           const connectedNode = nodes.find(n => n.id === connectedNodeId);
           if (!connectedNode) return;
 
-          // Ensure we don't draw a line from a node to itself (though typically not in connectedNodes)
+          // Ensure we don't draw a line from a node to itself
           if (node.id === connectedNode.id) return;
 
-          // Calculate 3D positions for both nodes using same logic as node positioning
-          const calculateNodePosition = (nodeData: any) => {
-            const baseRadius = 8;
-            const radiusVariation = 3;
-            
-            const seedX = nodeData.x / 600;
-            const seedY = nodeData.y / 500;
-            const seedZ = (seedX + seedY) % 1;
-            
-            const phi = seedX * Math.PI * 2;
-            const theta = seedY * Math.PI;
-            const radius = baseRadius + (seedZ - 0.5) * radiusVariation;
-            
-            return {
-              x: radius * Math.sin(theta) * Math.cos(phi),
-              y: radius * Math.cos(theta),
-              z: radius * Math.sin(theta) * Math.sin(phi)
-            };
-          };
+          // Calculate 3D positions for both nodes using the new calculateTrianglePosition function
+          const pos1Config = triangleNodeConfiguration[node.id as keyof typeof triangleNodeConfiguration];
+          const pos2Config = triangleNodeConfiguration[connectedNode.id as keyof typeof triangleNodeConfiguration];
 
-          const pos1 = calculateNodePosition(node);
-          const pos2 = calculateNodePosition(connectedNode);
+          // Skip line if either node is not in the triangle configuration (should not happen if nodes prop is filtered)
+          if (!pos1Config || !pos2Config) return;
 
-          const worldX1 = pos1.x;
-          const worldY1 = pos1.y;
-          const worldZ1 = pos1.z;
-
-          const worldX2 = pos2.x;
-          const worldY2 = pos2.y;
-          const worldZ2 = pos2.z;
+          const pos1 = calculateTrianglePosition(node.id);
+          const pos2 = calculateTrianglePosition(connectedNode.id);
 
           const points = [
-            new THREE.Vector3(worldX1, worldY1, worldZ1),
-            new THREE.Vector3(worldX2, worldY2, worldZ2)
+            new THREE.Vector3(pos1.x, pos1.y, pos1.z),
+            new THREE.Vector3(pos2.x, pos2.y, pos2.z)
           ];
 
           const geometry = new THREE.BufferGeometry().setFromPoints(points);
@@ -776,22 +856,19 @@ export default function MapPanel({ nodes, visitedNodes, currentNodeId, onNodeCli
             );
           })} */}
 
-          {/* Tooltip Overlay - Kept for now, will need to be triggered by Three.js interactions later */}
-          {hoveredNodeId && (() => {
+          {/* Tooltip Overlay - Updated for new screen positioning */}
+          {hoveredNodeId && tooltipScreenPosition && (() => {
             const hoveredNode = nodes.find(n => n.id === hoveredNodeId);
             if (!hoveredNode) return null;
 
-            // const frequency = visitFrequency[hoveredNode.id] || 0; // SVG specific state
-            const tooltipX = (hoveredNode.x / 600) * 100; // SVG specific coordinates
-            const tooltipY = (hoveredNode.y / 500) * 100;
-
             return (
               <div
-                className="absolute p-3 bg-navy/90 border border-cyan rounded-md shadow-xl text-sm text-soft-white max-w-xs tooltip-fade-in"
+                className="p-3 bg-navy/90 border border-cyan rounded-md shadow-xl text-sm text-soft-white max-w-xs tooltip-fade-in"
                 style={{
-                  left: `${tooltipX}%`,
-                  top: `${tooltipY}%`,
-                  transform: 'translate(-50%, -110%)',
+                  position: 'fixed',
+                  left: `${tooltipScreenPosition.x}px`,
+                  top: `${tooltipScreenPosition.y - 100}px`, // Apply fixed offset as per plan
+                  transform: 'translateX(-50%)', // Center horizontally
                   pointerEvents: 'none',
                 }}
               >
@@ -799,11 +876,11 @@ export default function MapPanel({ nodes, visitedNodes, currentNodeId, onNodeCli
                 <p className="text-xs text-cool-gray mb-2 whitespace-pre-wrap leading-relaxed" style={{ maxHeight: '100px', overflowY: 'auto' }}>
                   {hoveredNode.content || "No additional details available."}
                 </p>
-                {/* <p className="text-xs text-cyan">Visit Count: {frequency}</p> */} {/* SVG specific state */}
+                 {/* <p className="text-xs text-cyan">Visit Count: {visitFrequency[hoveredNode.id] || 0}</p> */}
               </div>
             );
           })()}
-        {/* </div> */} {/* This div was wrapping the SVG and nodes, now mountRef is the direct child for Three.js */}
+        {/* </div> */}
 
         {/* Mobile Zoom Controls */}
         <div className="absolute bottom-4 right-4 lg:hidden flex flex-col space-y-2">

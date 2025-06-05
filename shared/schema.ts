@@ -19,6 +19,9 @@ export const storyNodes = pgTable("story_nodes", {
   isLocked: boolean("is_locked").default(false),
   connectedNodes: text("connected_nodes").array(),
   choices: jsonb("choices"),
+  characterType: text('character_type', { enum: ['archaeologist', 'algorithm', 'last-human'] }),
+  nodeRole: text('node_role', { enum: ['center', 'perspective'] }),
+  characterIndex: integer('character_index'),
 });
 
 export const userProgress = pgTable("user_progress", {

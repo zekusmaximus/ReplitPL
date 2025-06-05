@@ -7,8 +7,30 @@ import {
   type StoryNode, 
   type InsertStoryNode,
   type UserProgress,
-  type InsertUserProgress 
+  type InsertUserProgress,
+  type StoryNode // Ensure StoryNode is imported if not already
 } from "@shared/schema";
+
+// Define triangleNodeConfiguration near the top
+const triangleNodeConfiguration = {
+  // ARCHAEOLOGIST CHARACTER (Discovery & Ancient Knowledge)
+  'origin': { characterType: 'archaeologist', nodeRole: 'center' },
+  'discovery': { characterType: 'archaeologist', nodeRole: 'perspective', characterIndex: 0 },
+  'revelation': { characterType: 'archaeologist', nodeRole: 'perspective', characterIndex: 1 },
+  'contact': { characterType: 'archaeologist', nodeRole: 'perspective', characterIndex: 2 },
+
+  // ALGORITHM CHARACTER (Digital Consciousness & AI)
+  'paradox': { characterType: 'algorithm', nodeRole: 'center' },
+  'merge': { characterType: 'algorithm', nodeRole: 'perspective', characterIndex: 0 },
+  'conflict': { characterType: 'algorithm', nodeRole: 'perspective', characterIndex: 1 },
+  'alternative-path': { characterType: 'algorithm', nodeRole: 'perspective', characterIndex: 2 },
+
+  // LAST HUMAN CHARACTER (Isolation & Choice)
+  'isolation': { characterType: 'last-human', nodeRole: 'center' },
+  'salvation': { characterType: 'last-human', nodeRole: 'perspective', characterIndex: 0 },
+  'sacrifice': { characterType: 'last-human', nodeRole: 'perspective', characterIndex: 1 },
+  'evacuation': { characterType: 'last-human', nodeRole: 'perspective', characterIndex: 2 }
+};
 
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
@@ -440,8 +462,28 @@ But the most shocking discovery was yet to come. In this parallel dimension, she
     ].concat(additionalNodes, expansionNodes, missingNodes);
 
     nodes.forEach(node => {
+      const config = triangleNodeConfiguration[node.id as keyof typeof triangleNodeConfiguration];
+      if (config) {
+        (node as any).characterType = config.characterType;
+        (node as any).nodeRole = config.nodeRole;
+        if (config.characterIndex !== undefined) {
+          (node as any).characterIndex = config.characterIndex;
+        }
+      }
       this.storyNodes.set(node.id, node as StoryNode);
     });
+  }
+
+  private getTriangleNodes(): StoryNode[] {
+    const triangleNodeIds = Object.keys(triangleNodeConfiguration);
+    const result: StoryNode[] = [];
+    triangleNodeIds.forEach(id => {
+      const node = this.storyNodes.get(id);
+      if (node) {
+        result.push(node);
+      }
+    });
+    return result;
   }
 
   async getUser(id: number): Promise<User | undefined> {
@@ -466,7 +508,7 @@ But the most shocking discovery was yet to come. In this parallel dimension, she
   }
 
   async getAllStoryNodes(): Promise<StoryNode[]> {
-    return Array.from(this.storyNodes.values());
+    return this.getTriangleNodes();
   }
 
   async createStoryNode(node: InsertStoryNode): Promise<StoryNode> {
