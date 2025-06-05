@@ -76,14 +76,15 @@ export default function MapPanel({ nodes, visitedNodes, currentNodeId, onNodeCli
       sceneRef.current = scene;
       scene.add(nodesGroupRef.current); // Add the group to the scene
 
-      // Camera
+      // Camera - positioned for better 3D constellation viewing
       const camera = new THREE.PerspectiveCamera(
-        75,
+        60,
         currentMount.clientWidth / currentMount.clientHeight,
         0.1,
-        1000
+        100
       );
-      camera.position.z = 10; // Adjusted camera position
+      camera.position.set(15, 10, 15); // Better angle to see the 3D constellation
+      camera.lookAt(0, 0, 0); // Look at the center of the constellation
       cameraRef.current = camera;
 
       // Renderer
@@ -217,13 +218,22 @@ export default function MapPanel({ nodes, visitedNodes, currentNodeId, onNodeCli
         nodesGroupRef.current.children.forEach(child => {
           if (child instanceof THREE.Mesh) {
             child.geometry.dispose();
-            child.material.dispose();
+            if (Array.isArray(child.material)) {
+              child.material.forEach(mat => mat.dispose());
+            } else {
+              child.material.dispose();
+            }
           }
         });
         nodesGroupRef.current.clear();
         if (testCubeRef.current) {
             testCubeRef.current.geometry.dispose();
-            testCubeRef.current.material.dispose();
+            const material = testCubeRef.current.material;
+            if (Array.isArray(material)) {
+              material.forEach(mat => mat.dispose());
+            } else {
+              material.dispose();
+            }
         }
         orbitControlsRef.current?.dispose();
         if (particleSystemRef.current) {
@@ -258,11 +268,25 @@ export default function MapPanel({ nodes, visitedNodes, currentNodeId, onNodeCli
     const FRACTAL_CHILD_SCALE = 0.3;
     const FRACTAL_CHILD_OFFSET_RADIUS = 0.5;
 
-    // Create and position new 3D nodes
-    nodes.forEach(node => {
-      const worldX = (node.x / 600 - 0.5) * 12; // Adjusted spread
-      const worldY = (node.y / 500 - 0.5) * -10; // Adjusted spread & Invert Y
-      const worldZ = (node.x / 600) * 8 - 4;
+    // Create and position new 3D nodes with proper constellation spread
+    nodes.forEach((node, index) => {
+      // Create a more spherical 3D distribution
+      const baseRadius = 8;
+      const radiusVariation = 3;
+      
+      // Use node position as seed for consistent but varied placement
+      const seedX = node.x / 600;
+      const seedY = node.y / 500;
+      const seedZ = (seedX + seedY) % 1;
+      
+      // Convert to spherical coordinates for constellation effect
+      const phi = seedX * Math.PI * 2; // Azimuth angle
+      const theta = seedY * Math.PI; // Polar angle
+      const radius = baseRadius + (seedZ - 0.5) * radiusVariation;
+      
+      const worldX = radius * Math.sin(theta) * Math.cos(phi);
+      const worldY = radius * Math.cos(theta);
+      const worldZ = radius * Math.sin(theta) * Math.sin(phi);
 
       const geometry = new THREE.IcosahedronGeometry(0.4, 1); // Adjusted size and detail
       const material = new THREE.MeshStandardMaterial({
@@ -530,13 +554,36 @@ export default function MapPanel({ nodes, visitedNodes, currentNodeId, onNodeCli
           // Ensure we don't draw a line from a node to itself (though typically not in connectedNodes)
           if (node.id === connectedNode.id) return;
 
-          const worldX1 = (node.x / 600 - 0.5) * 12; // Adjusted to match node positioning
-          const worldY1 = (node.y / 500 - 0.5) * -10; // Adjusted to match node positioning
-          const worldZ1 = 0; // Lines are on the Z=0 plane for now
+          // Calculate 3D positions for both nodes using same logic as node positioning
+          const calculateNodePosition = (nodeData: any) => {
+            const baseRadius = 8;
+            const radiusVariation = 3;
+            
+            const seedX = nodeData.x / 600;
+            const seedY = nodeData.y / 500;
+            const seedZ = (seedX + seedY) % 1;
+            
+            const phi = seedX * Math.PI * 2;
+            const theta = seedY * Math.PI;
+            const radius = baseRadius + (seedZ - 0.5) * radiusVariation;
+            
+            return {
+              x: radius * Math.sin(theta) * Math.cos(phi),
+              y: radius * Math.cos(theta),
+              z: radius * Math.sin(theta) * Math.sin(phi)
+            };
+          };
 
-          const worldX2 = (connectedNode.x / 600 - 0.5) * 12; // Adjusted to match node positioning
-          const worldY2 = (connectedNode.y / 500 - 0.5) * -10; // Adjusted to match node positioning
-          const worldZ2 = 0; // Lines are on the Z=0 plane for now
+          const pos1 = calculateNodePosition(node);
+          const pos2 = calculateNodePosition(connectedNode);
+
+          const worldX1 = pos1.x;
+          const worldY1 = pos1.y;
+          const worldZ1 = pos1.z;
+
+          const worldX2 = pos2.x;
+          const worldY2 = pos2.y;
+          const worldZ2 = pos2.z;
 
           const points = [
             new THREE.Vector3(worldX1, worldY1, worldZ1),
