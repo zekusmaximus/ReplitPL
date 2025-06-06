@@ -53,21 +53,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update user progress
   app.patch("/api/progress/:userId", async (req, res) => {
     try {
-      const progressData = req.body;
+      const progressData = insertUserProgressSchema.parse(req.body);
       const progress = await storage.updateUserProgress(req.params.userId, progressData);
       res.json(progress);
     } catch (error) {
-      if (error instanceof Error && error.message === "User progress not found") {
-        // Create new progress if it doesn't exist
-        try {
-          const newProgress = await storage.createUserProgress({
-            userId: req.params.userId,
-            ...req.body,
-          });
-          return res.json(newProgress);
-        } catch (createError) {
-          return res.status(500).json({ message: "Failed to create user progress" });
-        }
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid progress data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to update user progress" });
     }
@@ -104,13 +95,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Initialize newCurrentNode and newVisitedNodes based on current progress
       let newCurrentNode = progress.currentNode;
-      let newVisitedNodes = [...progress.visitedNodes];
+      let newVisitedNodes = progress.visitedNodes ? [...progress.visitedNodes] : [];
 
       if (choice.nextNode) {
         const targetNode = await storage.getStoryNode(choice.nextNode);
         if (!targetNode) {
           console.warn(`Attempted to navigate to non-existent node ID: '${choice.nextNode}' from node: '${nodeId}' via choice: '${choiceId}'. User remains on current node.`);
-          // User remains on current node, newCurrentNode and newVisitedNodes are already set to current values.
+          return res.status(400).json({ message: "Invalid choice: target node does not exist" });
         } else {
           // Valid target node, update current node and visited list
           newCurrentNode = choice.nextNode;
@@ -128,6 +119,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }];
 
       const updatedProgress = await storage.updateUserProgress(userId, {
+        userId,
         visitedNodes: newVisitedNodes, // Use the (potentially updated) list
         currentNode: newCurrentNode,   // Use the (potentially updated) current node
         choices: newChoices,
@@ -137,7 +129,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(updatedProgress);
     } catch (error) {
-      console.error(`[SERVER ERROR] /api/story/choice: ${error.message}`, error); // Added error log
+      if (error instanceof Error) {
+        console.error(`[SERVER ERROR] /api/story/choice: ${error.message}`, error); // Added error log
+      } else {
+        console.error(`[SERVER ERROR] /api/story/choice: An unknown error occurred`, error);
+      }
       res.status(500).json({ message: "Failed to process choice" });
     }
   });

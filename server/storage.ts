@@ -4,11 +4,10 @@ import {
   userProgress, 
   type User, 
   type InsertUser, 
-  type StoryNode, 
   type InsertStoryNode,
   type UserProgress,
   type InsertUserProgress,
-  type StoryNode // Ensure StoryNode is imported if not already
+  type StoryNode
 } from "@shared/schema";
 
 // Define triangleNodeConfiguration near the top
@@ -42,7 +41,7 @@ export interface IStorage {
   createStoryNode(node: InsertStoryNode): Promise<StoryNode>;
   
   getUserProgress(userId: string): Promise<UserProgress | undefined>;
-  updateUserProgress(userId: string, progress: Partial<UserProgress>): Promise<UserProgress>;
+  updateUserProgress(userId: string, progress: InsertUserProgress): Promise<UserProgress>;
   createUserProgress(progress: InsertUserProgress): Promise<UserProgress>;
 }
 
@@ -263,7 +262,7 @@ export class MemStorage implements IStorage {
       }
     ];
 
-    const nodes: InsertStoryNode[] = [
+    const baseNodes: InsertStoryNode[] = [
       {
         id: "origin",
         title: "The Genesis Protocol",
@@ -459,18 +458,19 @@ But the most shocking discovery was yet to come. In this parallel dimension, she
           }
         ]
       }
-    ].concat(additionalNodes, expansionNodes, missingNodes);
+    ];
+    const nodes: InsertStoryNode[] = baseNodes.concat(additionalNodes, expansionNodes, missingNodes);
 
     nodes.forEach(node => {
       const config = triangleNodeConfiguration[node.id as keyof typeof triangleNodeConfiguration];
       if (config) {
         (node as any).characterType = config.characterType;
         (node as any).nodeRole = config.nodeRole;
-        if (config.characterIndex !== undefined) {
-          (node as any).characterIndex = config.characterIndex;
+        if ((config as any).characterIndex !== undefined) {
+          (node as any).characterIndex = (config as any).characterIndex;
         }
       }
-      this.storyNodes.set(node.id, node as StoryNode);
+      this.storyNodes.set(node.id, { ...node, isLocked: node.isLocked ?? false } as StoryNode);
     });
   }
 
@@ -521,7 +521,7 @@ But the most shocking discovery was yet to come. In this parallel dimension, she
     return this.userProgress.get(userId);
   }
 
-  async updateUserProgress(userId: string, progress: Partial<UserProgress>): Promise<UserProgress> {
+  async updateUserProgress(userId: string, progress: InsertUserProgress): Promise<UserProgress> {
     const existing = this.userProgress.get(userId);
     if (!existing) {
       throw new Error("User progress not found");
@@ -530,6 +530,7 @@ But the most shocking discovery was yet to come. In this parallel dimension, she
     const updated: UserProgress = {
       ...existing,
       ...progress,
+      userId, // Ensure userId is not overwritten
       updatedAt: new Date(),
     };
     
@@ -542,9 +543,10 @@ But the most shocking discovery was yet to come. In this parallel dimension, she
     const userProgress: UserProgress = {
       id,
       ...progress,
+      choices: progress.choices ?? [],
       createdAt: new Date(),
       updatedAt: new Date(),
-    };
+    } as UserProgress;
     
     this.userProgress.set(progress.userId, userProgress);
     return userProgress;

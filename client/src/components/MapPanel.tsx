@@ -62,7 +62,7 @@ const calculateTrianglePosition = (nodeId: string): { x: number, y: number, z: n
       y: centerPos.y,
       z: 0
     };
-  } else {
+  } else if (nodeConfig.nodeRole === 'perspective' && 'characterIndex' in nodeConfig) {
     const subRadius = 4;
     // Ensure characterIndex is treated as a number for calculations
     const charIndex = Number(nodeConfig.characterIndex);
@@ -72,6 +72,13 @@ const calculateTrianglePosition = (nodeId: string): { x: number, y: number, z: n
       x: centerPos.x + subRadius * Math.cos(subAngle),
       y: centerPos.y + subRadius * Math.sin(subAngle),
       z: (charIndex - 1) * 2 // Slight Z variation for depth
+    };
+  } else {
+    // Fallback for unexpected config
+    return {
+      x: centerPos.x,
+      y: centerPos.y,
+      z: 0
     };
   }
 };
